@@ -9,6 +9,8 @@ namespace KSTS
 {
     class GUICrewTransferSelector
     {
+        private enum CrewFillType { Pilots, Engineers, Scientists, Tourists }
+
         public List<string> crewToDeliver = null;
         public List<string> crewToCollect = null;
 
@@ -30,6 +32,139 @@ namespace KSTS
             this.missionProfile = missionProfile;
             crewToDeliver = new List<string>();
             crewToCollect = new List<string>();
+        }
+
+        static string GetCrewFillLabel(CrewFillType fillType)
+        {
+            switch (fillType)
+            {
+                case CrewFillType.Pilots: return "Pilots";
+                case CrewFillType.Engineers: return "Engineers";
+                case CrewFillType.Scientists: return "Scientists";
+                default: return "Tourists";
+            }
+        }
+
+        static string GetCrewTraitName(CrewFillType fillType)
+        {
+            switch (fillType)
+            {
+                case CrewFillType.Pilots: return "Pilot";
+                case CrewFillType.Engineers: return "Engineer";
+                case CrewFillType.Scientists: return "Scientist";
+                default: return "Tourist";
+            }
+        }
+
+        static bool IsCrewAvailableForFill(ProtoCrewMember crewMember)
+        {
+            return crewMember != null && MissionController.GetKerbonautsMission(crewMember.name) == null;
+        }
+
+        List<ProtoCrewMember> GetCrewFromRoster(CrewFillType fillType)
+        {
+            var traitName = GetCrewTraitName(fillType);
+            return GetCrewRoster().Where(crewMember => IsCrewAvailableForFill(crewMember) && crewMember.trait == traitName && !crewToDeliver.Contains(crewMember.name)).ToList();
+        }
+
+        List<ProtoCrewMember> GetCrewFromTargetVessel(CrewFillType fillType)
+        {
+            if (targetVessel == null) return new List<ProtoCrewMember>();
+            var traitName = GetCrewTraitName(fillType);
+            return TargetVessel.GetCrew(targetVessel).Where(crewMember => IsCrewAvailableForFill(crewMember) && crewMember.trait == traitName && !crewToCollect.Contains(crewMember.name)).ToList();
+        }
+
+        int GetRemainingOutboundSlots()
+        {
+            if (missionProfile == null) return 0;
+
+            var remainingSlots = 0;
+            if (targetVessel != null)
+            {
+                var targetCrewCapacity = TargetVessel.GetCrewCapacity(targetVessel);
+                var targetCrewCount = TargetVessel.GetCrew(targetVessel).Count;
+                remainingSlots = targetCrewCapacity - (targetCrewCount + crewToDeliver.Count - crewToCollect.Count);
+            }
+            else if (targetTemplate != null)
+            {
+                remainingSlots = targetTemplate.GetCrewCapacity() - crewToDeliver.Count;
+            }
+
+            if (missionProfile.missionType == MissionProfileType.TRANSPORT)
+            {
+                remainingSlots = Math.Min(remainingSlots, missionProfile.crewCapacity - crewToDeliver.Count);
+            }
+
+            return Math.Max(0, remainingSlots);
+        }
+
+        int GetRemainingInboundSlots()
+        {
+            if (missionProfile == null || targetVessel == null) return 0;
+            if (missionProfile.missionType != MissionProfileType.TRANSPORT || missionProfile.oneWayMission) return 0;
+            return Math.Max(0, missionProfile.crewCapacity - crewToCollect.Count);
+        }
+
+        void FillCrewToDeliverWithCrewType(CrewFillType fillType)
+        {
+            var remainingSlots = GetRemainingOutboundSlots();
+            if (remainingSlots <= 0) return;
+
+            foreach (var crewMember in GetCrewFromRoster(fillType))
+            {
+                if (remainingSlots <= 0) break;
+                crewToDeliver.Add(crewMember.name);
+                remainingSlots--;
+            }
+        }
+
+        void FillCrewToCollectWithCrewType(CrewFillType fillType)
+        {
+            var remainingSlots = GetRemainingInboundSlots();
+            if (remainingSlots <= 0) return;
+
+            foreach (var crewMember in GetCrewFromTargetVessel(fillType))
+            {
+                if (remainingSlots <= 0) break;
+                crewToCollect.Add(crewMember.name);
+                remainingSlots--;
+            }
+        }
+
+        void DrawFillButtons(bool inbound, bool transportOnly = false)
+        {
+            var crewTypeValues = new[] { CrewFillType.Pilots, CrewFillType.Engineers, CrewFillType.Scientists, CrewFillType.Tourists };
+            GUILayout.BeginHorizontal();
+            GUILayout.Label("Fill with:");
+
+            var previousEnabled = UnityEngine.GUI.enabled;
+            foreach (var fillType in crewTypeValues)
+            {
+                var availableCrew = inbound ? GetCrewFromTargetVessel(fillType) : GetCrewFromRoster(fillType);
+                var canFill = availableCrew.Count > 0 && (inbound ? GetRemainingInboundSlots() : GetRemainingOutboundSlots()) > 0;
+                UnityEngine.GUI.enabled = previousEnabled && canFill;
+                if (GUILayout.Button(GetCrewFillLabel(fillType), GUI.buttonStyle, GUILayout.Width(92)))
+                {
+                    if (inbound) FillCrewToCollectWithCrewType(fillType);
+                    else FillCrewToDeliverWithCrewType(fillType);
+                }
+            }
+
+            UnityEngine.GUI.enabled = previousEnabled;
+            GUILayout.EndHorizontal();
+
+            GUILayout.BeginHorizontal();
+
+            if (inbound)
+            {
+                if (GUILayout.Button("Deselect all", GUI.buttonStyle, GUILayout.Width(92))) crewToCollect.Clear();
+            }
+            else
+            {
+                if (GUILayout.Button("Deselect all", GUI.buttonStyle, GUILayout.Width(92))) crewToDeliver.Clear();
+            }
+
+            GUILayout.EndHorizontal();
         }
 
         // Returns a list of all kerbals on the crew-roster that can be transported:
@@ -85,6 +220,11 @@ namespace KSTS
                             else if (!selected && crewToCollect.Contains(kerbonaut.name)) crewToCollect.Remove(kerbonaut.name);
                         }
                     }
+
+                    if (!missionProfile.oneWayMission && missionProfile.missionType == MissionProfileType.TRANSPORT)
+                    {
+                        DrawFillButtons(true);
+                    }
                     GUILayout.Label("");
                 }
                 else if (targetTemplate != null) // New vessel (only inbound transfers possible)
@@ -118,6 +258,8 @@ namespace KSTS
                     else inbound += ", inbound: -";
                     GUILayout.Label(headline + outbound + inbound);
                 }
+
+                DrawFillButtons(false);
 
                 // Display crew-rowster:
                 foreach (var kerbonaut in GetCrewRoster())

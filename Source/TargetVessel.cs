@@ -150,6 +150,30 @@ namespace KSTS
             return capacity;
         }
 
+        private static int GetCrewCapacity(ProtoPartSnapshot protoPart)
+        {
+            AvailablePart part;
+            if (!KSTS.partDictionary.TryGetValue(protoPart.partName, out part)) return 0;
+            if (part.partPrefab == null) return 0;
+
+            int partCrewCapacity = part.partPrefab.CrewCapacity;
+            int moduleIdx = 0;
+            foreach (ProtoPartModuleSnapshot module in protoPart.modules)
+            {
+                if (module.moduleName == "USIAnimation" && module.moduleValues.GetValue("isDeployed") == "True")
+                {
+                    partCrewCapacity = part.partPrefab.Modules.GetModule(moduleIdx).Fields.GetValue<int>("CrewCapacity");
+                }
+                if ((module.moduleName == "ModuleDeployableCentrifuge" || module.moduleName == "ModuleDeployableHabitat") && module.moduleValues.GetValue("Deployed") == "True")
+                {
+                    partCrewCapacity = part.partPrefab.Modules.GetModule(moduleIdx).Fields.GetValue<int>("DeployedCrewCapacity");
+                }
+                moduleIdx++;
+            }
+
+            return partCrewCapacity;
+        }
+
         // Returns the vessel with the given ID, if it exists:
         public static Vessel GetVesselById(Guid vesselId)
         {
@@ -288,8 +312,7 @@ namespace KSTS
                 ProtoPartSnapshot targetPart = null;
                 foreach (var protoPart in vessel.protoVessel.protoPartSnapshots)
                 {
-                    if (!KSTS.partDictionary.ContainsKey(protoPart.partName)) continue;
-                    var crewCapacity = KSTS.partDictionary[protoPart.partName].partPrefab.CrewCapacity;
+                    var crewCapacity = GetCrewCapacity(protoPart);
                     if (crewCapacity <= 0) continue;
                     if (protoPart.protoCrewNames.Count >= crewCapacity) continue;
                     targetPart = protoPart;
