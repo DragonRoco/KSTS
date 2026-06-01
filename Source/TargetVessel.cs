@@ -364,7 +364,7 @@ namespace KSTS
         }
 
         // Removes the given kerbonaut from the crew of the (unloaded) vessel and returns him to the crew-roster:
-        public static void RecoverCrewMember(Vessel vessel, string kerbonautName)
+        public static bool RecoverCrewMember(Vessel vessel, string kerbonautName)
         {
             // We can only manipulate the crew of an unloaded ship:
             if (vessel.loaded) throw new Exception("TargetVessel.AddCrewMember can only be called on unloaded vessels");
@@ -387,7 +387,7 @@ namespace KSTS
                     // Maybe the plaayer has removed the kerbal from the vessel (eg EVA, docking, etc):
                     Log.Warning("unable to recover kerbonaut "+kerbonautName+" from vessel "+ Localizer.Format(vessel.vesselName) + ", kerbal not found on board");
                     ScreenMessages.PostScreenMessage("Crew-Transfer aborted: Kerbonaut " + kerbonautName + " not present on " + Localizer.Format(vessel.vesselName));
-                    return;
+                    return false;
                 }
 
                 // Remove the kerbal from the part:
@@ -395,7 +395,9 @@ namespace KSTS
                 sourcePart.protoModuleCrew.Remove(kerbonaut);
 
                 // Add the kerbal back to the crew-roster:
+                var oldStatus = kerbonaut.rosterStatus;
                 kerbonaut.rosterStatus = ProtoCrewMember.RosterStatus.Available;
+                GameEvents.onKerbalStatusChanged.Fire(kerbonaut, oldStatus, ProtoCrewMember.RosterStatus.Available);
 
                 // Add the descent-phases to his flight log and archive his flight (commits the flight-current log to his career-log):
                 kerbonaut.flightLog.AddEntry(FlightLog.EntryType.Land, Planetarium.fetch.Home.bodyName);
@@ -407,10 +409,12 @@ namespace KSTS
 
                 Log.Warning("recovered kerbonaut " + kerbonautName + " from vessel " + Localizer.Format(vessel.vesselName));
                 ScreenMessages.PostScreenMessage("Kerbonaut " + kerbonautName + " recovered from " + Localizer.Format(vessel.vesselName));
+                return true;
             }
             catch (Exception e)
             {
                 Debug.LogError("TargetVessel.RecoverCrewMember(" + Localizer.Format(vessel.vesselName) + "," + kerbonautName + "): " + e.ToString());
+                return false;
             }
         }
     }

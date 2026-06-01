@@ -357,11 +357,12 @@ namespace KSTS
                                     TargetVessel.AddResources(targetVessel, item.Key, item.Value);
                                 }
                             }
+                            var recoveredAnyCrew = false;
                             if (crewToCollect != null)
                             {
                                 foreach (var kerbonautName in crewToCollect)
                                 {
-                                    TargetVessel.RecoverCrewMember(targetVessel, kerbonautName);
+                                    recoveredAnyCrew = TargetVessel.RecoverCrewMember(targetVessel, kerbonautName) || recoveredAnyCrew;
                                 }
                             }
                             if (crewToDeliver != null)
@@ -370,6 +371,11 @@ namespace KSTS
                                 {
                                     TargetVessel.AddCrewMember(targetVessel, kerbonautName);
                                 }
+                            }
+
+                            if (recoveredAnyCrew && targetVessel.protoVessel != null)
+                            {
+                                GameEvents.onVesselRecovered.Fire(targetVessel.protoVessel, true);
                             }
                         }
                         return true;

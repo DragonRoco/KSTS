@@ -225,6 +225,7 @@ namespace KSTS
                     {
                         DrawFillButtons(true);
                     }
+
                     GUILayout.Label("");
                 }
                 else if (targetTemplate != null) // New vessel (only inbound transfers possible)
