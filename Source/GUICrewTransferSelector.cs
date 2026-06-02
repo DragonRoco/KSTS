@@ -208,6 +208,11 @@ namespace KSTS
                     if (targetOverload) transfers = "<color=#FF0000>" + transfers + "</color>";
                     GUILayout.Label(headline + transfers);
 
+                    if (!missionProfile.oneWayMission && missionProfile.missionType == MissionProfileType.TRANSPORT)
+                    {
+                        DrawFillButtons(true);
+                    }
+
                     // Display Crew that is stationed on the target vessel:
                     foreach (var kerbonaut in targetVesselCrew)
                     {
@@ -219,11 +224,6 @@ namespace KSTS
                             if (selected && !crewToCollect.Contains(kerbonaut.name)) crewToCollect.Add(kerbonaut.name);
                             else if (!selected && crewToCollect.Contains(kerbonaut.name)) crewToCollect.Remove(kerbonaut.name);
                         }
-                    }
-
-                    if (!missionProfile.oneWayMission && missionProfile.missionType == MissionProfileType.TRANSPORT)
-                    {
-                        DrawFillButtons(true);
                     }
 
                     GUILayout.Label("");
