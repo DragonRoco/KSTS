@@ -371,6 +371,14 @@ namespace KSTS
                                     TargetVessel.AddCrewMember(targetVessel, kerbonautName);
                                 }
                             }
+                            if (targetVessel != null)
+                            {
+                                // Force Kerbalism to recalculate background life support using new resource & crew levels
+                                GameEvents.onVesselWasModified.Fire(targetVessel);
+
+                                // Refresh the tracking engine to register any newly boarded/departed Kerbals
+                                GameEvents.onVesselCreate.Fire(targetVessel);
+                            }
                         }
                         return true;
                     }
