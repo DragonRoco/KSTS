@@ -11,3 +11,7 @@ For more information see the official [forum thread](http://forum.kerbalspacepro
 Includes a small patch by base10 to allow launches from other bodies than Kerbin, generally facilitated by Kerbal Konstructs or similar.
 
 Licensed under [CC BY-NC-SA 4.0](https://creativecommons.org/licenses/by-nc-sa/4.0)
+
+## Fork Details
+
+Forked by me (Roco) to add a vibe coded compatibility patch for use with Kerbalism. Use at your own risk, but I will be using this in my current KSP save.
