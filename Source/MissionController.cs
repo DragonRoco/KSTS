@@ -373,12 +373,13 @@ namespace KSTS
                             }
                             if (targetVessel != null)
                             {
-                                // Force Kerbalism to recalculate background life support using new resource & crew levels
+                                // 1. Fire native KSP notification
                                 GameEvents.onVesselWasModified.Fire(targetVessel);
 
-                                // Refresh the tracking engine to register any newly boarded/departed Kerbals
-                                GameEvents.onVesselCreate.Fire(targetVessel);
+                                // 2. Direct-call our listener class to update Kerbalism instantly!
+                                KerbalismPatchListener.SyncBackgroundVessel(targetVessel);
                             }
+
                         }
                         return true;
                     }
